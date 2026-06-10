@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Euler DFS – Implementasi Algoritma</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0D0F14;
+  --surface:   #141720;
+  --surface2:  #1C2030;
+  --border:    #252A3A;
+  --border2:   #2E3550;
+  --text:      #E8ECF4;
+  --muted:     #5A6380;
+  --muted2:    #7A85A0;
+  --accent:    #4F8EF7;
+  --accent2:   #3B72D4;
+  --green:     #2DD98E;
+  --green2:    #1BAD6E;
+  --red:       #F05A5A;
+  --red2:      #C43A3A;
+  --amber:     #F5A623;
+  --amber2:    #D4881A;
+  --purple:    #9B6DFF;
+  --teal:      #00D4C8;
+  --mono:      'JetBrains Mono', monospace;
+  --sans:      'Space Grotesk', sans-serif;
+  --glow-blue: 0 0 20px rgba(79,142,247,0.25);
+  --glow-green:0 0 20px rgba(45,217,142,0.25);
+}
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Subtle grid background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(79,142,247,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79,142,247,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* HEADER */
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+  z-index: 10;
+}
+header::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.4;
+}
+header h1 {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--text);
+}
+header p {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+.header-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  flex-shrink: 0;
+}
+
+/* LAYOUT */
+#app {
+  display: grid;
+  grid-template-columns: 272px 1fr;
+  flex: 1;
+  overflow: hidden;
+  height: calc(100vh - 50px);
+  position: relative;
+  z-index: 1;
+}
+
+/* SIDEBAR */
+#sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#sidebar.dragging {
+  cursor: grabbing;
+}
+#sidebar::-webkit-scrollbar { width: 3px; }
+#sidebar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.section {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.section-title {
+  font-size: 9px;
+  font-family: var(--mono);
+  color: var(--muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* GRAPH SELECTOR */
+.graph-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  border: 1px solid transparent;
+  margin-bottom: 4px;
+  transition: all 0.2s;
+}
+.graph-option:hover { background: var(--surface2); border-color: var(--border2); }
+.graph-option.active {
+  background: rgba(79,142,247,0.08);
+  border-color: rgba(79,142,247,0.3);
+}
+.graph-option-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px currentColor;
+}
+.graph-option-label { font-weight: 500; font-size: 12.5px; color: var(--text); }
+.graph-option-sub { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-top: 1px; }
+.graph-option.active .graph-option-label { color: var(--accent); }
+
+/* NODE SELECTOR */
+#start-select {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  background: var(--surface2);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235A6380' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  transition: border-color 0.15s;
+}
+#start-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(79,142,247,0.15); }
+#start-select option { background: var(--surface2); }
+
+/* WEIGHT TOGGLE SECTION */
+.weight-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.toggle-switch {
+  position: relative;
+  width: 38px; height: 20px;
+  cursor: pointer;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-track {
+  position: absolute;
+  inset: 0;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  transition: all 0.25s;
+}
+.toggle-thumb {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 12px; height: 12px;
+  background: var(--muted);
+  border-radius: 50%;
+  transition: all 0.25s;
+}
+.toggle-switch input:checked + .toggle-track { background: rgba(79,142,247,0.2); border-color: var(--accent); }
+.toggle-switch input:checked ~ .toggle-thumb { left: 21px; background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.toggle-label { font-size: 11.5px; font-family: var(--mono); color: var(--muted2); }
+
+/* WEIGHT INPUTS */
+#weight-inputs {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+#weight-inputs.show { display: flex; }
+#weight-inputs::-webkit-scrollbar { width: 3px; }
+#weight-inputs::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.weight-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 11px;
+  font-family: var(--mono);
+  transition: border-color 0.15s;
+}
+.weight-row:hover { border-color: var(--border2); }
+.weight-edge-name { color: var(--muted2); flex: 1; }
+.weight-input {
+  width: 50px;
+  padding: 2px 6px;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 11px;
+  text-align: right;
+  transition: border-color 0.15s;
+}
+.weight-input:focus { outline: none; border-color: var(--accent); }
+
+/* NODE CARDS */
+.node-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+.node-card {
+  padding: 7px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  font-size: 12px;
+  transition: all 0.2s;
+}
+.node-card-name {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+.node-card-deg { font-size: 10px; color: var(--muted); }
+.node-card-deg b { font-weight: 600; }
+.node-card.odd { border-left: 2px solid var(--red); }
+.node-card.even { border-left: 2px solid var(--green); }
+.node-card.start { background: rgba(245,166,35,0.08); border-color: rgba(245,166,35,0.4); }
+.node-card.visited { background: rgba(45,217,142,0.06); border-color: rgba(45,217,142,0.3); }
+
+/* EULER TYPE BADGE */
+#euler-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-family: var(--mono);
+  font-weight: 600;
+  border: 1px solid;
+  letter-spacing: 0.5px;
+}
+.badge-sirkuit { background: rgba(45,217,142,0.08); color: var(--green); border-color: rgba(45,217,142,0.3); }
+.badge-lintasan { background: rgba(79,142,247,0.08); color: var(--accent); border-color: rgba(79,142,247,0.3); }
+.badge-bukan { background: rgba(240,90,90,0.08); color: var(--red); border-color: rgba(240,90,90,0.3); }
+
+/* LOG */
+#log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+#log::-webkit-scrollbar { width: 3px; }
+#log::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.log-entry {
+  padding: 6px 9px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-family: var(--mono);
+  line-height: 1.6;
+  border-left: 2px solid;
+  transition: opacity 0.2s;
+}
+.log-default { border-color: var(--border); color: var(--muted); background: transparent; }
+.log-step { border-color: var(--accent); background: rgba(79,142,247,0.05); color: var(--text); }
+.log-done { border-color: var(--green); background: rgba(45,217,142,0.06); color: var(--green); }
+.log-step-num { font-size: 9px; color: var(--muted); margin-bottom: 1px; }
+
+/* MAIN CANVAS AREA */
+#main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* CONTROLS */
+#controls {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 9px 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.btn {
+  padding: 6px 13px;
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: 0.2px;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 2px 12px rgba(79,142,247,0.3);
+}
+.btn-primary:hover { box-shadow: 0 2px 18px rgba(79,142,247,0.5); transform: translateY(-1px); }
+.btn-secondary { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+.btn-secondary:hover { background: var(--border); border-color: var(--border2); }
+.btn-danger { background: var(--surface2); color: var(--red); border-color: rgba(240,90,90,0.3); }
+.btn-danger:hover { background: rgba(240,90,90,0.08); }
+.btn:disabled { opacity: 0.35; cursor: default; transform: none !important; }
+
+.speed-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  color: var(--muted);
+  font-family: var(--mono);
+  margin-left: auto;
+}
+.speed-wrap input {
+  width: 72px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* CANVAS */
+#canvas-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+canvas { display: block; width: 100%; height: 100%; }
+
+/* RESULT OVERLAY */
+#result-overlay {
+  display: none;
+  position: absolute;
+  top: 14px; right: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 12px 15px;
+  min-width: 200px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(79,142,247,0.1);
+  z-index: 10;
+}
+#result-overlay.show { display: block; }
+.result-label { font-size: 9px; font-family: var(--mono); color: var(--muted); margin-bottom: 6px; letter-spacing: 1px; text-transform: uppercase; }
+.result-path { font-size: 12px; font-family: var(--mono); line-height: 1.9; color: var(--text); }
+.result-path .start-node { color: var(--amber); font-weight: 600; }
+.result-path .path-node { color: var(--accent); }
+
+/* TOTAL WEIGHT DISPLAY */
+#total-weight-overlay {
+  display: none;
+  position: absolute;
+  top: 14px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid rgba(155,109,255,0.3);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-family: var(--mono);
+  font-size: 11px;
+  z-index: 10;
+  white-space: nowrap;
+  box-shadow: 0 0 20px rgba(155,109,255,0.15);
+}
+#total-weight-overlay.show { display: block; }
+#total-weight-val { color: var(--purple); font-weight: 700; font-size: 14px; }
+
+/* STEP INFO */
+#step-overlay {
+  display: none;
+  position: absolute;
+  bottom: 14px; right: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 9px 13px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  z-index: 10;
+  max-width: 220px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+#step-overlay.show { display: block; }
+#step-num { color: var(--muted); font-size: 9px; margin-bottom: 3px; }
+#step-desc { color: var(--text); line-height: 1.5; }
+
+/* LEGEND */
+#legend {
+  position: absolute;
+  bottom: 14px; left: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 10.5px;
+  font-family: var(--mono);
+  z-index: 10;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+.legend-row { display: flex; align-items: center; gap: 7px; color: var(--muted2); margin-bottom: 4px; }
+.legend-row:last-child { margin-bottom: 0; }
+.leg-dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid; }
+.leg-line { width: 20px; height: 3px; border-radius: 2px; }
+
+/* NODE RENAME MODAL */
+#rename-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+#rename-modal.show { display: flex; }
+.rename-card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 20px 24px;
+  min-width: 280px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(79,142,247,0.15);
+}
+.rename-title {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.rename-input {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  transition: border-color 0.15s;
+}
+.rename-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(79,142,247,0.15); }
+.rename-hint { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-bottom: 14px; line-height: 1.6; }
+.rename-btns { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* RENAME section in sidebar */
+.rename-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rename-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  transition: border-color 0.15s;
+}
+.rename-row:hover { border-color: var(--border2); }
+.rename-node-id {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+  width: 20px;
+  flex-shrink: 0;
+}
+.rename-node-input {
+  flex: 1;
+  padding: 2px 6px;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  transition: border-color 0.15s;
+}
+.rename-node-input:focus { outline: none; border-color: var(--accent); }
+
+/* Prevent drag cursor on interactive sidebar elements */
+#sidebar input,
+#sidebar select,
+#sidebar button,
+#sidebar label,
+.graph-option,
+.toggle-switch {
+  cursor: pointer;
+}
+#sidebar .rename-node-input,
+#sidebar .weight-input {
+  cursor: text;
+}
+
+/* STATUS BAR */
+#statusbar {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 6px 18px;
+  display: flex;
+  gap: 20px;
+  font-size: 10.5px;
+  font-family: var(--mono);
+  color: var(--muted);
+}
+.stat span { color: var(--text); font-weight: 600; }
+#st-weight-stat { display: none; }
+#st-weight-stat.show { display: inline; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-dot"></div>
+  <h1>Euler DFS Explorer</h1>
+  <p>Implementasi Algoritma DFS · Rumetna et al. (2023)</p>
+</header>
+
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+
+    <!-- Graf selector -->
+    <div class="section">
+      <div class="section-title">Graf</div>
+      <div class="graph-option active" onclick="selectGraph('jurnal')" id="opt-jurnal">
+        <div class="graph-option-dot" style="color:#4F8EF7;background:#4F8EF7"></div>
+        <div>
+          <div class="graph-option-label">Graf Jurnal (A–E)</div>
+          <div class="graph-option-sub">Rumetna 2023 · 5 simpul · 8 sisi</div>
+        </div>
+      </div>
+      <div class="graph-option" onclick="selectGraph('sirkuit')" id="opt-sirkuit">
+        <div class="graph-option-dot" style="color:#2DD98E;background:#2DD98E"></div>
+        <div>
+          <div class="graph-option-label">Graf Sirkuit (1–5)</div>
+          <div class="graph-option-sub">Semua derajat genap · 10 sisi</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Start node selector -->
+    <div class="section">
+      <div class="section-title">Simpul Awal DFS</div>
+      <select id="start-select" onchange="onStartChange()"></select>
+      <div style="margin-top:8px;font-size:10.5px;color:var(--muted);font-family:var(--mono);line-height:1.6" id="start-hint"></div>
+    </div>
+
+    <!-- BOBOT SISI -->
+    <div class="section">
+      <div class="section-title">Bobot Sisi</div>
+      <div class="weight-toggle-row">
+        <span class="toggle-label">Aktifkan Bobot Custom</span>
+        <label class="toggle-switch" id="weight-toggle-label">
+          <input type="checkbox" id="weight-toggle" onchange="onWeightToggle()">
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div style="font-size:10px;color:var(--muted);font-family:var(--mono);line-height:1.5;margin-bottom:6px" id="weight-hint">
+        Bobot default: semua sisi = 1
+      </div>
+      <div id="weight-inputs"></div>
+    </div>
+
+    <!-- Rename Nodes -->
+    <div class="section">
+      <div class="section-title">Label Simpul</div>
+      <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-bottom:8px;line-height:1.5">Edit nama tampilan setiap simpul. Klik 2x di canvas untuk rename cepat.</div>
+      <div class="rename-grid" id="rename-grid"></div>
+    </div>
+
+    <!-- Euler type -->
+    <div class="section">
+      <div class="section-title">Tipe Graf</div>
+      <div id="euler-badge" class="badge-lintasan">◈ Lintasan Euler</div>
+      <div style="margin-top:8px;font-size:10.5px;color:var(--muted);line-height:1.6" id="euler-desc"></div>
+    </div>
+
+    <!-- Node info -->
+    <div class="section">
+      <div class="section-title">Info Simpul</div>
+      <div class="node-grid" id="node-grid"></div>
+    </div>
+
+    <!-- DFS Log -->
+    <div class="section-title" style="padding:12px 16px 5px;font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:2px;text-transform:uppercase">Prosedur DFS</div>
+    <div id="log">
+      <div class="log-entry log-default">Pilih graf dan klik <b>Jalankan DFS</b></div>
+    </div>
+
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div id="controls">
+      <button class="btn btn-primary" onclick="runDFS()">▶ Jalankan DFS</button>
+      <button class="btn btn-secondary" onclick="animateSteps()">⟳ Animasi Step</button>
+      <button class="btn btn-secondary" onclick="resetAll()">↺ Reset</button>
+      <button class="btn btn-danger" onclick="stopAnim()" id="stop-btn" style="display:none">⏹ Stop</button>
+      <div class="speed-wrap">
+        <span>Kecepatan</span>
+        <input type="range" min="200" max="2000" value="800" id="speed" oninput="animSpeed=+this.value;document.getElementById('speed-val').textContent=this.value+'ms'">
+        <span id="speed-val">800ms</span>
+      </div>
+    </div>
+
+    <div id="canvas-wrap">
+      <canvas id="cv"></canvas>
+
+      <div id="result-overlay">
+        <div class="result-label">Jalur Euler ditemukan</div>
+        <div class="result-path" id="result-path"></div>
+      </div>
+
+      <div id="total-weight-overlay">
+        <span style="color:var(--muted2)">Total Bobot Lintasan: </span>
+        <span id="total-weight-val">0</span>
+      </div>
+
+      <div id="step-overlay">
+        <div id="step-num"></div>
+        <div id="step-desc"></div>
+      </div>
+
+      <div id="legend">
+        <div class="legend-row"><div class="leg-dot" style="border-color:#4F8EF7;background:rgba(79,142,247,0.15)"></div>Simpul normal</div>
+        <div class="legend-row"><div class="leg-dot" style="border-color:#F05A5A;background:rgba(240,90,90,0.1)"></div>Simpul awal</div>
+        <div class="legend-row"><div class="leg-dot" style="border-color:#F5A623;background:rgba(245,166,35,0.15)"></div>Sedang dikunjungi</div>
+        <div class="legend-row"><div class="leg-dot" style="border-color:#2DD98E;background:rgba(45,217,142,0.1)"></div>Sudah dilalui</div>
+        <div class="legend-row"><div class="leg-line" style="background:#2DD98E"></div>Sisi dilalui</div>
+        <div class="legend-row"><div class="leg-line" style="background:#F5A623"></div>Sisi aktif</div>
+      </div>
+    </div>
+
+    <div id="statusbar">
+      <div class="stat">Graf: <span id="st-graph">Jurnal A–E</span></div>
+      <div class="stat">Status: <span id="st-status">Belum dijalankan</span></div>
+      <div class="stat">Langkah: <span id="st-step">0 / 0</span></div>
+      <div class="stat">Sisi dilalui: <span id="st-edge">0</span></div>
+      <div class="stat" id="st-weight-stat">Bobot total: <span id="st-weight">0</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- RENAME MODAL -->
+<div id="rename-modal">
+  <div class="rename-card">
+    <div class="rename-title">✏ Rename Simpul</div>
+    <input class="rename-input" id="rename-input" type="text" maxlength="8" placeholder="Nama baru...">
+    <div class="rename-hint" id="rename-hint"></div>
+    <div class="rename-btns">
+      <button class="btn btn-secondary" onclick="closeRenameModal()">Batal</button>
+      <button class="btn btn-primary" onclick="confirmRename()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── DATA GRAF ── */
+const GRAPHS = {
+  jurnal: {
+    name: 'Jurnal A–E',
+    nodes: ['A','B','C','D','E'],
+    edges: [['A','B'],['A','C'],['B','C'],['B','D'],['B','E'],['C','E'],['C','D'],['D','E']],
+    layout: { A:[0.5,0.13], B:[0.22,0.42], C:[0.78,0.42], D:[0.22,0.78], E:[0.78,0.78] },
+    desc: { A:'Simpul A', B:'Simpul B', C:'Simpul C', D:'Simpul D', E:'Simpul E' },
+  },
+  sirkuit: {
+    name: 'Sirkuit 1–5',
+    nodes: ['1','2','3','4','5'],
+    edges: [['1','2'],['2','3'],['3','4'],['4','5'],['5','1'],['1','3'],['3','5'],['2','4'],['4','1'],['5','2']],
+    layout: null,
+    desc: { '1':'Simpul 1','2':'Simpul 2','3':'Simpul 3','4':'Simpul 4','5':'Simpul 5' },
+  },
+};
+
+/* ── NODE LABELS (display names) ── */
+let nodeLabels = {};  // key: nodeId, value: display label
+
+function getLabel(n) {
+  return nodeLabels[n] !== undefined ? nodeLabels[n] : n;
+}
+
+function initLabels() {
+  const g = GRAPHS[curGraph];
+  nodeLabels = {};
+  g.nodes.forEach(n => { nodeLabels[n] = n; });
+}
+
+function renderRenameGrid() {
+  const g = GRAPHS[curGraph];
+  const grid = document.getElementById('rename-grid');
+  grid.innerHTML = g.nodes.map(n => `
+    <div class="rename-row">
+      <span class="rename-node-id">${n}</span>
+      <input class="rename-node-input" type="text" maxlength="8"
+        value="${getLabel(n)}"
+        placeholder="${n}"
+        oninput="onLabelChange('${n}', this.value)"
+        onkeydown="if(event.key==='Enter')this.blur()">
+    </div>
+  `).join('');
+}
+
+function onLabelChange(nodeId, val) {
+  nodeLabels[nodeId] = val.trim() || nodeId;
+  drawCanvas(null, dfsResult ? dfsResult.used : null);
+  renderNodeGrid(dfsResult ? dfsResult.path : []);
+  populateStartSelect();
+}
+
+/* ── RENAME MODAL ── */
+let renameTarget = null;
+
+function openRenameModal(nodeId) {
+  renameTarget = nodeId;
+  const input = document.getElementById('rename-input');
+  input.value = getLabel(nodeId);
+  document.getElementById('rename-hint').innerHTML =
+    `Simpul ID: <span style="color:var(--accent);font-weight:600">${nodeId}</span> · Nama tampilan bisa berbeda dari ID.`;
+  document.getElementById('rename-modal').classList.add('show');
+  setTimeout(() => { input.focus(); input.select(); }, 50);
+}
+
+function closeRenameModal() {
+  document.getElementById('rename-modal').classList.remove('show');
+  renameTarget = null;
+}
+
+function confirmRename() {
+  if (!renameTarget) return;
+  const val = document.getElementById('rename-input').value.trim();
+  nodeLabels[renameTarget] = val || renameTarget;
+  closeRenameModal();
+  renderRenameGrid();
+  drawCanvas(null, dfsResult ? dfsResult.used : null);
+  renderNodeGrid(dfsResult ? dfsResult.path : []);
+  populateStartSelect();
+}
+
+// Close modal on backdrop click
+document.getElementById('rename-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeRenameModal();
+});
+
+// Enter key in modal
+document.getElementById('rename-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') confirmRename();
+  if (e.key === 'Escape') closeRenameModal();
+});
+
+// Double-click on canvas to rename node
+document.getElementById('cv').addEventListener('dblclick', function(e) {
+  const rect = this.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (this.width / rect.width);
+  const my = (e.clientY - rect.top) * (this.height / rect.height);
+  const pos = getPositions();
+  const g = GRAPHS[curGraph];
+  for (const n of g.nodes) {
+    const p = pos[n];
+    const dx = mx - p.x, dy = my - p.y;
+    if (Math.sqrt(dx*dx + dy*dy) < 26) {
+      openRenameModal(n);
+      return;
+    }
+  }
+});
+
+
+let weightEnabled = false;
+let customWeights = {};  // key: "u-v" (sorted), value: number
+
+function edgeKey(u, v) {
+  return [u,v].sort().join('-');
+}
+
+function getWeight(u, v) {
+  if (!weightEnabled) return 1;
+  const k = edgeKey(u, v);
+  return customWeights[k] !== undefined ? customWeights[k] : 1;
+}
+
+function onWeightToggle() {
+  weightEnabled = document.getElementById('weight-toggle').checked;
+  const container = document.getElementById('weight-inputs');
+  const hint = document.getElementById('weight-hint');
+  const statEl = document.getElementById('st-weight-stat');
+
+  if (weightEnabled) {
+    container.classList.add('show');
+    hint.textContent = 'Edit bobot tiap sisi di bawah:';
+    statEl.classList.add('show');
+    renderWeightInputs();
+  } else {
+    container.classList.remove('show');
+    hint.textContent = 'Bobot default: semua sisi = 1';
+    statEl.classList.remove('show');
+    document.getElementById('total-weight-overlay').classList.remove('show');
+  }
+  resetAll(false);
+  drawCanvas();
+}
+
+function renderWeightInputs() {
+  const g = GRAPHS[curGraph];
+  const container = document.getElementById('weight-inputs');
+  container.innerHTML = g.edges.map(([u,v]) => {
+    const k = edgeKey(u,v);
+    if (customWeights[k] === undefined) customWeights[k] = 1;
+    return `<div class="weight-row">
+      <span class="weight-edge-name">${u} — ${v}</span>
+      <input class="weight-input" type="number" min="1" max="999" value="${customWeights[k]}"
+        onchange="updateWeight('${k}', this.value)"
+        oninput="updateWeight('${k}', this.value)">
+    </div>`;
+  }).join('');
+}
+
+function updateWeight(key, val) {
+  const n = parseFloat(val);
+  customWeights[key] = isNaN(n) || n <= 0 ? 1 : n;
+  resetAll(false);
+  drawCanvas();
+}
+
+function calcTotalWeight(usedEdges) {
+  return usedEdges.reduce((sum, [u,v]) => sum + getWeight(u,v), 0);
+}
+
+/* ── GRAPH LOGIC ── */
+function buildAdj(nodes, edges) {
+  const adj = {};
+  nodes.forEach(n => adj[n] = []);
+  edges.forEach(([u,v]) => { adj[u].push(v); adj[v].push(u); });
+  return adj;
+}
+function degree(adj, n) { return adj[n].length; }
+function oddNodes(nodes, adj) { return nodes.filter(n => degree(adj,n) % 2 !== 0); }
+function isConnected(nodes, adj) {
+  if (!nodes.length) return true;
+  const vis = new Set, q = [nodes[0]];
+  while (q.length) { const c = q.shift(); if (!vis.has(c)) { vis.add(c); adj[c].forEach(nb => { if (!vis.has(nb)) q.push(nb); }); } }
+  return vis.size === nodes.length;
+}
+function eulerType(nodes, adj) {
+  if (!isConnected(nodes, adj)) return 'bukan';
+  const odd = oddNodes(nodes, adj);
+  return odd.length === 0 ? 'sirkuit' : odd.length === 2 ? 'lintasan' : 'bukan';
+}
+function copyAdj(adj) { const r = {}; for (const k in adj) r[k] = [...adj[k]]; return r; }
+
+/* DFS rekursif */
+const dfsLog = [];
+function dfsRec(cur, adjR, path, used, total) {
+  if (used.length === total) return true;
+  const nbrs = [...adjR[cur]];
+  for (const nb of nbrs) {
+    if (adjR[cur].includes(nb)) {
+      adjR[cur].splice(adjR[cur].indexOf(nb), 1);
+      adjR[nb].splice(adjR[nb].indexOf(cur), 1);
+      used.push([cur, nb]);
+      path.push(nb);
+      dfsLog.push({ step: path.length, from: cur, to: nb, path: [...path], edge: [cur, nb] });
+      if (dfsRec(nb, adjR, path, used, total)) return true;
+      adjR[cur].push(nb);
+      adjR[nb].push(cur);
+      used.pop(); path.pop(); dfsLog.pop();
+    }
+  }
+  return false;
+}
+
+function runDFSAlgo(g, startNode) {
+  const adj = buildAdj(g.nodes, g.edges);
+  const type = eulerType(g.nodes, adj);
+  const adjR = copyAdj(adj);
+  dfsLog.length = 0;
+  const path = [startNode], used = [];
+  dfsLog.push({ step: 1, from: null, to: startNode, path: [startNode], edge: null });
+  const ok = dfsRec(startNode, adjR, path, used, g.edges.length);
+  return { type, path, used, ok, start: startNode };
+}
+
+/* ── STATE ── */
+let curGraph = 'jurnal';
+let dfsResult = null;
+let animTimer = null, animStep = 0, animSpeed = 800, animRunning = false;
+
+/* ── INIT & GRAPH SELECT ── */
+function selectGraph(gid) {
+  curGraph = gid;
+  customWeights = {};
+  ['jurnal','sirkuit'].forEach(id => {
+    document.getElementById('opt-'+id).classList.toggle('active', id === gid);
+  });
+  document.getElementById('st-graph').textContent = GRAPHS[gid].name;
+  initLabels();
+  resetAll();
+  populateStartSelect();
+  updateEulerInfo();
+  renderNodeGrid();
+  renderRenameGrid();
+  if (weightEnabled) renderWeightInputs();
+  drawCanvas();
+}
+
+function populateStartSelect() {
+  const g = GRAPHS[curGraph];
+  const adj = buildAdj(g.nodes, g.edges);
+  const type = eulerType(g.nodes, adj);
+  const odds = oddNodes(g.nodes, adj);
+  const sel = document.getElementById('start-select');
+  sel.innerHTML = g.nodes.map(n => {
+    const deg = degree(adj, n);
+    const isOdd = deg % 2 !== 0;
+    const tag = isOdd ? ' ⚠ ganjil' : ' ✓ genap';
+    return `<option value="${n}">${getLabel(n)} — deg ${deg}${tag}</option>`;
+  }).join('');
+  if (type === 'lintasan' && odds.length) sel.value = odds[0];
+  else sel.value = g.nodes[0];
+  updateStartHint();
+}
+
+function onStartChange() {
+  updateStartHint();
+  resetAll(false);
+  drawCanvas();
+}
+
+function updateStartHint() {
+  const g = GRAPHS[curGraph];
+  const adj = buildAdj(g.nodes, g.edges);
+  const type = eulerType(g.nodes, adj);
+  const sel = document.getElementById('start-select');
+  const node = sel.value;
+  const deg = degree(adj, node);
+  const isOdd = deg % 2 !== 0;
+  const hint = document.getElementById('start-hint');
+  const odds = oddNodes(g.nodes, adj);
+  if (type === 'lintasan') {
+    if (isOdd) hint.innerHTML = `<span style="color:var(--green)">✓ Simpul ${getLabel(node)} berderajat ganjil — valid sebagai titik awal.</span>`;
+    else hint.innerHTML = `<span style="color:var(--red)">⚠ Simpul ${getLabel(node)} berderajat genap. Mulailah dari simpul ganjil (${odds.map(getLabel).join(' atau ')}).</span>`;
+  } else if (type === 'sirkuit') {
+    hint.innerHTML = `<span style="color:var(--green)">✓ Sirkuit Euler — boleh mulai dari simpul mana saja.</span>`;
+  } else {
+    hint.innerHTML = `<span style="color:var(--red)">Graf ini bukan Euler.</span>`;
+  }
+}
+
+function updateEulerInfo() {
+  const g = GRAPHS[curGraph];
+  const adj = buildAdj(g.nodes, g.edges);
+  const type = eulerType(g.nodes, adj);
+  const odds = oddNodes(g.nodes, adj);
+  const badge = document.getElementById('euler-badge');
+  const desc = document.getElementById('euler-desc');
+  badge.className = 'badge-' + type;
+  if (type === 'sirkuit') {
+    badge.textContent = '✦ Sirkuit Euler';
+    desc.innerHTML = 'Semua simpul berderajat genap.<br>Lintasan kembali ke titik awal.';
+  } else if (type === 'lintasan') {
+    badge.textContent = '◈ Lintasan Euler';
+    desc.innerHTML = `Tepat 2 simpul berderajat ganjil: <b>${odds.map(getLabel).join(', ')}</b>.<br>Mulai dan akhir di simpul berbeda.`;
+  } else {
+    badge.textContent = '✗ Bukan Euler';
+    desc.innerHTML = `${odds.length} simpul berderajat ganjil.<br>Tidak memenuhi syarat Euler.`;
+  }
+}
+
+function renderNodeGrid(visitedSet = []) {
+  const g = GRAPHS[curGraph];
+  const adj = buildAdj(g.nodes, g.edges);
+  const startVal = document.getElementById('start-select').value;
+  const grid = document.getElementById('node-grid');
+  grid.innerHTML = g.nodes.map(n => {
+    const deg = degree(adj, n);
+    const isOdd = deg % 2 !== 0;
+    const isStart = n === startVal;
+    const isVisited = visitedSet.includes(n);
+    let cls = 'node-card ' + (isOdd ? 'odd' : 'even');
+    if (isStart && !isVisited) cls += ' start';
+    if (isVisited) cls += ' visited';
+    return `<div class="${cls}">
+      <div class="node-card-name">${getLabel(n)}</div>
+      <div class="node-card-deg">derajat: <b style="color:${isOdd?'var(--red)':'var(--green)'}">${deg}</b></div>
+      <div style="font-size:9.5px;color:var(--muted);margin-top:2px">${isOdd?'⚠ ganjil':'✓ genap'}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ── RUN DFS ── */
+function runDFS() {
+  stopAnim();
+  const g = GRAPHS[curGraph];
+  const startNode = document.getElementById('start-select').value;
+  dfsResult = runDFSAlgo(g, startNode);
+  renderLog();
+  renderNodeGrid();
+  updateResult();
+  document.getElementById('st-status').textContent = dfsResult.ok ? '✅ Ditemukan' : '❌ Gagal';
+  document.getElementById('st-step').textContent = `0 / ${dfsLog.length}`;
+  document.getElementById('st-edge').textContent = dfsResult.used.length;
+  if (weightEnabled && dfsResult.ok) {
+    const tw = calcTotalWeight(dfsResult.used);
+    document.getElementById('st-weight').textContent = tw;
+    document.getElementById('total-weight-overlay').classList.add('show');
+    document.getElementById('total-weight-val').textContent = tw;
+  }
+  drawCanvas(null, dfsResult.used);
+}
+
+function renderLog() {
+  const log = document.getElementById('log');
+  log.innerHTML = '';
+  dfsLog.forEach((entry, i) => {
+    const isLast = i === dfsLog.length - 1;
+    const div = document.createElement('div');
+    div.className = `log-entry ${isLast && dfsResult.ok ? 'log-done' : 'log-step'}`;
+    const wLabel = weightEnabled && entry.edge ? ` <span style="color:var(--purple);font-size:9px">[w=${getWeight(...entry.edge)}]</span>` : '';
+    div.innerHTML = `<div class="log-step-num">LANGKAH ${entry.step}</div>
+      ${entry.from
+        ? `<div>${getLabel(entry.from)} → ${getLabel(entry.to)}${wLabel}</div><div style="color:var(--muted);font-size:9.5px">${entry.path.map(getLabel).join(' → ')}</div>`
+        : `<div>Mulai dari simpul ${getLabel(entry.to)}</div>`}`;
+    log.appendChild(div);
+  });
+  if (dfsResult.ok) {
+    const tw = weightEnabled ? calcTotalWeight(dfsResult.used) : null;
+    const div = document.createElement('div');
+    div.className = 'log-entry log-done';
+    div.innerHTML = `<div class="log-step-num">✅ SELESAI</div>
+      <div>${dfsResult.type === 'sirkuit' ? 'Sirkuit' : 'Lintasan'} Euler ditemukan</div>
+      <div style="font-size:9.5px">${dfsResult.path.map(getLabel).join(' → ')}</div>
+      ${tw !== null ? `<div style="color:var(--purple);font-size:9px;margin-top:2px">Total bobot: ${tw}</div>` : ''}`;
+    log.appendChild(div);
+  }
+  log.scrollTop = log.scrollHeight;
+}
+
+function updateResult() {
+  if (!dfsResult || !dfsResult.ok) return;
+  const overlay = document.getElementById('result-overlay');
+  overlay.classList.add('show');
+  const pathEl = document.getElementById('result-path');
+  pathEl.innerHTML = dfsResult.path.map((n, i) =>
+    `<span class="${i===0?'start-node':'path-node'}">${getLabel(n)}</span>${i < dfsResult.path.length-1 ? ' → ' : ''}`
+  ).join('');
+}
+
+/* ── ANIMATE ── */
+function animateSteps() {
+  if (!dfsResult) runDFS();
+  if (!dfsResult.ok) return;
+  stopAnim();
+  animStep = 0;
+  animRunning = true;
+  document.getElementById('stop-btn').style.display = 'flex';
+  document.getElementById('st-status').textContent = '⟳ Animasi...';
+  stepAnim();
+}
+
+function stepAnim() {
+  if (!animRunning) return;
+  if (animStep >= dfsLog.length) {
+    animRunning = false;
+    document.getElementById('stop-btn').style.display = 'none';
+    document.getElementById('st-status').textContent = '✅ Selesai';
+    document.getElementById('step-overlay').classList.remove('show');
+    drawCanvas(null, dfsResult.used);
+    if (weightEnabled) {
+      const tw = calcTotalWeight(dfsResult.used);
+      document.getElementById('total-weight-overlay').classList.add('show');
+      document.getElementById('total-weight-val').textContent = tw;
+      document.getElementById('st-weight').textContent = tw;
+    }
+    return;
+  }
+  const entry = dfsLog[animStep];
+  const visitedSoFar = dfsLog.slice(0, animStep + 1).map(e => e.edge).filter(Boolean);
+  const curNode = entry.to;
+
+  const logItems = document.getElementById('log').children;
+  for (let i = 0; i < logItems.length; i++)
+    logItems[i].style.opacity = i === animStep ? '1' : '0.3';
+
+  document.getElementById('step-overlay').classList.add('show');
+  document.getElementById('step-num').textContent = `Langkah ${animStep + 1} / ${dfsLog.length}`;
+  let stepTxt = entry.from ? `${getLabel(entry.from)} → ${getLabel(entry.to)}  |  ${entry.path.map(getLabel).join(' → ')}` : `Mulai dari simpul ${getLabel(entry.to)}`;
+  if (weightEnabled && entry.edge) stepTxt += `  [w=${getWeight(...entry.edge)}]`;
+  document.getElementById('step-desc').textContent = stepTxt;
+
+  document.getElementById('st-step').textContent = `${animStep + 1} / ${dfsLog.length}`;
+  document.getElementById('st-edge').textContent = visitedSoFar.length;
+
+  if (weightEnabled) {
+    const tw = calcTotalWeight(visitedSoFar);
+    document.getElementById('st-weight').textContent = tw;
+    document.getElementById('total-weight-overlay').classList.add('show');
+    document.getElementById('total-weight-val').textContent = tw;
+  }
+
+  renderNodeGrid(entry.path);
+  drawCanvas(entry.edge ? [entry.edge] : [], visitedSoFar, curNode);
+
+  animStep++;
+  animTimer = setTimeout(stepAnim, animSpeed);
+}
+
+function stopAnim() {
+  animRunning = false;
+  if (animTimer) { clearTimeout(animTimer); animTimer = null; }
+  document.getElementById('stop-btn').style.display = 'none';
+}
+
+function resetAll(fullReset = true) {
+  stopAnim();
+  if (fullReset) dfsResult = null;
+  dfsLog.length = 0;
+  document.getElementById('log').innerHTML = '<div class="log-entry log-default">Pilih graf dan klik <b>Jalankan DFS</b></div>';
+  document.getElementById('result-overlay').classList.remove('show');
+  document.getElementById('step-overlay').classList.remove('show');
+  document.getElementById('total-weight-overlay').classList.remove('show');
+  document.getElementById('st-status').textContent = 'Belum dijalankan';
+  document.getElementById('st-step').textContent = '0 / 0';
+  document.getElementById('st-edge').textContent = '0';
+  document.getElementById('st-weight').textContent = '0';
+  renderNodeGrid();
+  drawCanvas();
+}
+
+/* ── CANVAS DRAWING ── */
+function getPositions() {
+  const cv = document.getElementById('cv');
+  const W = cv.width, H = cv.height;
+  const g = GRAPHS[curGraph];
+  const pos = {};
+  if (g.layout) {
+    g.nodes.forEach(n => {
+      pos[n] = { x: g.layout[n][0] * W, y: g.layout[n][1] * H };
+    });
+  } else {
+    const cx = W / 2, cy = H / 2, r = Math.min(W, H) * 0.36;
+    g.nodes.forEach((n, i) => {
+      const ang = (2 * Math.PI * i / g.nodes.length) - Math.PI / 2;
+      pos[n] = { x: cx + r * Math.cos(ang), y: cy + r * Math.sin(ang) };
+    });
+  }
+  return pos;
+}
+
+function drawCanvas(hlEdge = null, visited = null, curNode = null) {
+  const cv = document.getElementById('cv');
+  const wrap = document.getElementById('canvas-wrap');
+  cv.width = wrap.clientWidth;
+  cv.height = wrap.clientHeight;
+  const ctx = cv.getContext('2d');
+  const g = GRAPHS[curGraph];
+  const pos = getPositions();
+  const adj = buildAdj(g.nodes, g.edges);
+  const startVal = document.getElementById('start-select').value;
+
+  // Dark background
+  ctx.fillStyle = '#0D0F14';
+  ctx.fillRect(0, 0, cv.width, cv.height);
+
+  // Subtle grid
+  ctx.strokeStyle = 'rgba(79,142,247,0.04)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < cv.width; x += 40) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, cv.height); ctx.stroke();
+  }
+  for (let y = 0; y < cv.height; y += 40) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(cv.width, y); ctx.stroke();
+  }
+
+  // Draw edges
+  g.edges.forEach(([u, v]) => {
+    const pu = pos[u], pv = pos[v];
+    const isHL = hlEdge && hlEdge.some(([a,b]) => (a===u&&b===v)||(a===v&&b===u));
+    const isDone = visited && visited.some(([a,b]) => (a===u&&b===v)||(a===v&&b===u));
+    const w = getWeight(u, v);
+
+    ctx.beginPath();
+    ctx.moveTo(pu.x, pu.y);
+    ctx.lineTo(pv.x, pv.y);
+
+    if (isHL) {
+      ctx.strokeStyle = '#F5A623';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([]);
+      // Glow
+      ctx.shadowColor = '#F5A623';
+      ctx.shadowBlur = 12;
+    } else if (isDone) {
+      ctx.strokeStyle = '#2DD98E';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([]);
+      ctx.shadowColor = '#2DD98E';
+      ctx.shadowBlur = 8;
+    } else {
+      ctx.strokeStyle = 'rgba(90,99,128,0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 5]);
+      ctx.shadowBlur = 0;
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.setLineDash([]);
+
+    // Edge label: weight (if enabled) or edge name
+    const mx = (pu.x + pv.x) / 2, my = (pu.y + pv.y) / 2;
+    const dx = pv.x - pu.x, dy = pv.y - pu.y;
+    const len = Math.sqrt(dx*dx + dy*dy);
+    const ox = -dy/len * 12, oy = dx/len * 12;
+
+    if (weightEnabled) {
+      // Draw weight badge
+      ctx.save();
+      ctx.fillStyle = isDone ? 'rgba(45,217,142,0.15)' : isHL ? 'rgba(245,166,35,0.15)' : 'rgba(30,35,55,0.85)';
+      const bw = 28, bh = 16, br = 4;
+      const bx = mx + ox - bw/2, by = my + oy - bh/2;
+      ctx.beginPath();
+      ctx.roundRect(bx, by, bw, bh, br);
+      ctx.fill();
+      ctx.strokeStyle = isDone ? 'rgba(45,217,142,0.5)' : isHL ? 'rgba(245,166,35,0.5)' : 'rgba(90,99,128,0.3)';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+      ctx.font = '700 10px JetBrains Mono, monospace';
+      ctx.fillStyle = isDone ? '#2DD98E' : isHL ? '#F5A623' : '#9B6DFF';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(w, mx + ox, my + oy);
+      ctx.restore();
+    } else {
+      ctx.font = '10px JetBrains Mono, monospace';
+      ctx.fillStyle = isDone ? 'rgba(45,217,142,0.8)' : isHL ? '#F5A623' : 'rgba(90,99,128,0.6)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${u}-${v}`, mx, my);
+    }
+  });
+
+  // Draw nodes
+  g.nodes.forEach(n => {
+    const p = pos[n];
+    const deg = degree(adj, n);
+    const isOdd = deg % 2 !== 0;
+    const isStart = n === startVal;
+    const isCur = curNode === n;
+    const isVisited = visited && visited.some(([a,b]) => a===n || b===n);
+
+    let fill, stroke, textColor, glowColor;
+    fill = 'rgba(79,142,247,0.1)'; stroke = '#4F8EF7'; textColor = '#4F8EF7'; glowColor = '#4F8EF7';
+    if (isStart && !isVisited && !isCur) { fill = 'rgba(240,90,90,0.12)'; stroke = '#F05A5A'; textColor = '#F05A5A'; glowColor = '#F05A5A'; }
+    if (isVisited) { fill = 'rgba(45,217,142,0.1)'; stroke = '#2DD98E'; textColor = '#2DD98E'; glowColor = '#2DD98E'; }
+    if (isCur) { fill = 'rgba(245,166,35,0.15)'; stroke = '#F5A623'; textColor = '#F5A623'; glowColor = '#F5A623'; }
+
+    // Outer glow ring for current
+    if (isCur) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 36, 0, Math.PI * 2);
+      ctx.strokeStyle = `${glowColor}22`;
+      ctx.lineWidth = 8;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 30, 0, Math.PI * 2);
+      ctx.strokeStyle = `${glowColor}33`;
+      ctx.lineWidth = 4;
+      ctx.stroke();
+    }
+
+    // Node circle
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 22, 0, Math.PI * 2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = isCur ? 20 : isVisited ? 12 : 8;
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = isCur ? 2.5 : 1.5;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Node label
+    ctx.fillStyle = textColor;
+    ctx.font = `600 13px JetBrains Mono, monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const lbl = getLabel(n);
+    const fontSize = lbl.length > 3 ? Math.max(8, 13 - (lbl.length - 3) * 2) : 13;
+    ctx.font = `600 ${fontSize}px JetBrains Mono, monospace`;
+    ctx.fillText(lbl, p.x, p.y);
+
+    // Degree badge
+    const bx = p.x + 16, by = p.y - 16;
+    ctx.beginPath();
+    ctx.arc(bx, by, 9, 0, Math.PI * 2);
+    ctx.fillStyle = '#141720';
+    ctx.fill();
+    ctx.strokeStyle = isOdd ? '#F05A5A' : '#2DD98E';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = isOdd ? '#F05A5A' : '#2DD98E';
+    ctx.font = 'bold 8.5px JetBrains Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(deg, bx, by);
+  });
+}
+
+/* ── RESIZE ── */
+window.addEventListener('resize', () => drawCanvas(null, dfsResult ? dfsResult.used : null));
+
+/* ── SIDEBAR DRAG SCROLL ── */
+(function() {
+  const sidebar = document.getElementById('sidebar');
+  let isDown = false;
+  let startY = 0;
+  let scrollTop = 0;
+
+  sidebar.addEventListener('mousedown', function(e) {
+    // Don't initiate drag if clicking on interactive elements
+    const tag = e.target.tagName.toLowerCase();
+    if (['input','select','button','label','option'].includes(tag)) return;
+    isDown = true;
+    startY = e.pageY - sidebar.offsetTop;
+    scrollTop = sidebar.scrollTop;
+    sidebar.classList.add('dragging');
+  });
+
+  document.addEventListener('mousemove', function(e) {
+    if (!isDown) return;
+    e.preventDefault();
+    const y = e.pageY - sidebar.offsetTop;
+    const walk = (y - startY) * 1.2;
+    sidebar.scrollTop = scrollTop - walk;
+  });
+
+  document.addEventListener('mouseup', function() {
+    if (!isDown) return;
+    isDown = false;
+    sidebar.classList.remove('dragging');
+  });
+
+  // Touch support
+  let touchStartY = 0;
+  let touchScrollTop = 0;
+
+  sidebar.addEventListener('touchstart', function(e) {
+    const tag = e.target.tagName.toLowerCase();
+    if (['input','select','button','label','option'].includes(tag)) return;
+    touchStartY = e.touches[0].pageY;
+    touchScrollTop = sidebar.scrollTop;
+  }, { passive: true });
+
+  sidebar.addEventListener('touchmove', function(e) {
+    const walk = touchStartY - e.touches[0].pageY;
+    sidebar.scrollTop = touchScrollTop + walk;
+  }, { passive: true });
+})();
+
+/* ── BOOT ── */
+initLabels();
+populateStartSelect();
+updateEulerInfo();
+renderNodeGrid();
+renderRenameGrid();
+drawCanvas();
+</script>
+
+</body>
+</html>
