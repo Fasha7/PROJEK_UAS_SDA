@@ -15,7 +15,7 @@ Khusus untuk **Sirkuit Euler**, pencarian akan berakhir kembali ke titik asal ke
   1. Pengujian dengan data nyata (Jarak antar fakultas di UNESA Lidah Wetan).
   2. Pengujian dengan input manual dari pengguna (CLI).
 
-##  Prasyarat (Dependencies)
+##  Prasyarat
 Pastikan Anda telah menginstal Python 3.x di sistem Anda. Proyek ini membutuhkan pustaka pihak ketiga berikut:
 - `networkx`: Untuk pembuatan dan manajemen struktur data graf.
 - `matplotlib`: Untuk visualisasi/rendering graf.
